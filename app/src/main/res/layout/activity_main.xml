@@ -14,6 +14,12 @@
         android:layout_margin="8dp"
         android:text="Link contact" />
 
+    <Button
+        android:id="@+id/btnGet"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:text="Get contact" />
 
     <android.support.v7.widget.RecyclerView
         android:id="@+id/rvContactData"

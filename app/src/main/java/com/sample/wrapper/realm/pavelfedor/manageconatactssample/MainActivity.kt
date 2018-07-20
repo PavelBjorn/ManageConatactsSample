@@ -7,7 +7,6 @@ import android.content.ContentValues
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.ContactsContract
-import android.widget.Button
 import android.content.Intent
 import android.content.Intent.ACTION_PICK
 import android.database.Cursor
@@ -22,31 +21,36 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        findViewById<Button>(R.id.btnAdd).setOnClickListener {
-            getContactFromAddressBook()
+
+        btnAdd.setOnClickListener {
+            getContactFromAddressBook(0)
+        }
+
+        btnGet.setOnClickListener {
+            getContactFromAddressBook(1)
         }
 
         rvContactData.adapter = ListRvAdapter()
         rvContactData.layoutManager = LinearLayoutManager(this)
     }
 
-    private fun getContactFromAddressBook() {
-        startActivityForResult(Intent(ACTION_PICK, ContactsContract.Contacts.CONTENT_URI), 0)
+    private fun getContactFromAddressBook(resultCode: Int) {
+        startActivityForResult(Intent(ACTION_PICK, ContactsContract.Contacts.CONTENT_URI), resultCode)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode == Activity.RESULT_OK && requestCode == 0) {
+        if (resultCode == Activity.RESULT_OK && requestCode == 0 || requestCode == 1) {
             data?.let {
                 (rvContactData.adapter as ListRvAdapter).apply {
-                    contact = getContact(it.data ?: return)
+                    contact = getContact(it.data ?: return, requestCode)
                     notifyItemRangeChanged(0, contact?.contactsData?.size ?: 0)
                 }
             }
         }
     }
 
-    private fun getContact(uri: Uri): Contact {
+    private fun getContact(uri: Uri, requestCode: Int): Contact {
         return contentResolver.run {
             query(uri, null, null, null, null).run {
 
@@ -54,6 +58,7 @@ class MainActivity : AppCompatActivity() {
                 val data = mutableListOf<ContactsData>()
 
                 moveToFirst()
+
                 do {
                     data.add(ContactsData(
                             "",
@@ -61,8 +66,10 @@ class MainActivity : AppCompatActivity() {
                             getString(getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME))
                     ))
 
-                    val contactId = getString(getColumnIndex(ContactsContract.Contacts._ID)).apply {
-                        linkToTrill(this)
+                    val contactId = getString(getColumnIndex(ContactsContract.Contacts._ID))
+
+                    if (requestCode == 0) {
+                        linkToTreel(getString(ContactsContract.Contacts.NAME_RAW_CONTACT_ID))
                     }
 
                     query(
@@ -84,10 +91,11 @@ class MainActivity : AppCompatActivity() {
 
                     query(ContactsContract.Data.CONTENT_URI,
                             null,
-                            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = $contactId" +
+                            "${ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID} = $contactId" +
                                     " AND ${ContactsContract.Data.MIMETYPE} = \"${ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE}\"",
                             null,
-                            null).apply {
+                            null
+                    ).apply {
                         moveToFirst()
                         do {
                             data.add(ContactsData(
@@ -106,8 +114,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun linkToTrill(id: String) {
-
+    private fun linkToTreel(id: String) {
         contentResolver.applyBatch(
                 ContactsContract.AUTHORITY,
                 ArrayList(listOf(ContentProviderOperation.newInsert(ContactsContract.Data.CONTENT_URI)
@@ -125,5 +132,10 @@ class MainActivity : AppCompatActivity() {
 
 
 fun Cursor.getString(name: String): String {
-    return getString(getColumnIndex(name))
+    try {
+        return getString(getColumnIndex(name))
+    } catch (e: Throwable) {
+        e.printStackTrace()
+        return ""
+    }
 }
