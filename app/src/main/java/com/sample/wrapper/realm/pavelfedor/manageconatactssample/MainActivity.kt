@@ -68,10 +68,6 @@ class MainActivity : AppCompatActivity() {
 
                     val contactId = getString(getColumnIndex(ContactsContract.Contacts._ID))
 
-                    if (requestCode == 0) {
-                        linkToTreel(getString(ContactsContract.Contacts.NAME_RAW_CONTACT_ID))
-                    }
-
                     query(
                             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                             null,
@@ -89,22 +85,38 @@ class MainActivity : AppCompatActivity() {
                         } while (moveToNext())
                     }.close()
 
+
+                    if (requestCode == 0) query(ContactsContract.RawContacts.CONTENT_URI,
+                            null,
+                            "${ContactsContract.RawContacts.CONTACT_ID} = $contactId",
+                            null,
+                            null
+                    ).apply {
+
+                        if (moveToFirst()) {
+                            do {
+                                linkToTreel(getString(ContactsContract.RawContacts._ID))
+                            } while (moveToNext())
+                        }
+                    }
+
                     query(ContactsContract.Data.CONTENT_URI,
                             null,
-                            "${ContactsContract.CommonDataKinds.Phone.RAW_CONTACT_ID} = $contactId" +
+                            "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = $contactId" +
                                     " AND ${ContactsContract.Data.MIMETYPE} = \"${ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE}\"",
                             null,
                             null
                     ).apply {
-                        moveToFirst()
-                        do {
-                            data.add(ContactsData(
-                                    getString(ContactsContract.Data._ID),
-                                    ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE,
-                                    "${getString(ContactsContract.Data.DATA6)}: ${getString(ContactsContract.Data.DATA1)} " +
-                                            "with uid ${getString(ContactsContract.Data.DATA2)}"
-                            ))
-                        } while (moveToNext())
+                        if (moveToFirst()) {
+                            do {
+                                data.add(ContactsData(
+                                        getString(ContactsContract.Data._ID),
+                                        ContactsContract.CommonDataKinds.Im.CONTENT_ITEM_TYPE,
+                                        "${getString(ContactsContract.Data.DATA6)}: ${getString(ContactsContract.Data.DATA1)} "
+                                                + "with uid ${getString(ContactsContract.Data.DATA2)}"
+                                ))
+                            } while (moveToNext())
+                        }
                     }
 
                 } while (moveToNext())
@@ -132,10 +144,10 @@ class MainActivity : AppCompatActivity() {
 
 
 fun Cursor.getString(name: String): String {
-    try {
-        return getString(getColumnIndex(name))
+    return try {
+        getString(getColumnIndex(name))
     } catch (e: Throwable) {
         e.printStackTrace()
-        return ""
+        ""
     }
 }
